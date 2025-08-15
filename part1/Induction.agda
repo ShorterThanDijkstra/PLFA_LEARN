@@ -502,5 +502,8 @@ from_to (suc n) =
     suc n
   ∎
 
+{-
 to_from : ∀ (b : Bin) → to (from b) ≡ b
-to_from b = {!!}
+couterexample : to (from (⟨⟩ O)) ≡ zero
+-}
+
