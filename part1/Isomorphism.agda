@@ -304,4 +304,3 @@ from_to (suc n) =
 
 ℕ-≲-bin : ℕ ≲ Bin
 ℕ-≲-bin = record {to = b-to; from = b-from; from∘to = from_to}
-
