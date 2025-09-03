@@ -717,6 +717,115 @@ All-∀ xs = record {to = to xs; from = from xs; from∘to = from∘to xs; to∘
   to : ∀ {A : Set} {P : A → Set} (xs : List A) → (All P xs → (∀ y → y ∈ xs → P y)) 
   to [] [] = λ x → λ()
   to (x ∷ xs) (Px ∷ all-P-xs) = λ {y → λ { (here refl) → Px ; (there any-P-xs) → to xs all-P-xs y any-P-xs}}
+  
   from : ∀ {A : Set} {P : A → Set} (xs : List A) → ((∀ x → x ∈ xs → P x) → All P xs)
+  from [] = λ f → []
+  from (x ∷ xs) = λ { x→x∈x∷xs→Px → x→x∈x∷xs→Px x (here refl) ∷ (from xs λ {x → λ {x∈xs → x→x∈x∷xs→Px x (there x∈xs)}})}
+
   from∘to : ∀ {A : Set} {P : A → Set} (xs : List A) → (z : All P xs) → from xs (to xs z) ≡ z
-  to∘from : ∀ {A : Set} {P : A → Set} (xs : List A) → (z : (∀ y → y ∈ xs → P y)) → to xs (from xs z) ≡ z 
+  from∘to [] [] = refl
+  from∘to (x ∷ xs) (Px ∷ all-P-xs) = 
+    begin
+      Px ∷ from xs (to xs all-P-xs)     
+    ≡⟨ cong (Px ∷_) (from∘to xs all-P-xs) ⟩
+      Px ∷ all-P-xs
+    ∎
+
+  postulate  
+    to∘from : ∀ {A : Set} {P : A → Set} (xs : List A) → (z : (∀ y → y ∈ xs → P y)) → to xs (from xs z) ≡ z 
+{-   to∘from (x ∷ xs) z = 
+    begin
+      (λ { y → λ { (here refl) → z x (here refl) ; (there any-P-xs) → to xs (from xs (λ { x → λ { x∈xs → z x (there x∈xs) } })) y any-P-xs } })
+    ≡⟨ cong (λ t → (λ { y → λ { (here refl) → z x (here refl) ; (there any-P-xs) →  t y any-P-xs } })) (to∘from xs (λ { x → λ { x∈xs → z x (there x∈xs) } })) ⟩
+      (λ { y → λ { (here refl) → z x (here refl) ; (there any-P-xs) →  (λ { x → λ { x∈xs → z x (there x∈xs) } }) y any-P-xs } })
+    ≡⟨⟩
+      (λ { y → λ { (here refl) → z x (here refl) ; (there any-P-xs) →  (λ { x∈xs → z y (there x∈xs) }) any-P-xs } })
+    ≡⟨⟩
+      (λ { y → λ { (here refl) → z x (here refl) ; (there any-P-xs) →  z y (there  any-P-xs) } })
+    ≡⟨⟩
+      (λ { y → λ { (here refl) → z y (here refl) ; (there any-P-xs) →  z y (there  any-P-xs) } })
+    ≡⟨⟩
+      (λ { y → λ { u → z y u } })
+    ≡⟨⟩
+      (λ { y →  z y })
+    ≡⟨⟩
+      z
+    ∎ -}
+
+Any-∃ : ∀ {A : Set} {P : A → Set} (xs : List A) → Any P xs ≃ ∃[ x ] (x ∈ xs × P x)
+Any-∃ xs = record { to = to xs ; from = from xs ; from∘to = from∘to xs ; to∘from = to∘from xs }
+  where
+  to : ∀ {A : Set} {P : A → Set} (xs : List A) → Any P xs → ∃[ x ] (x ∈ xs × P x)
+  to (x ∷ xs) (here Px) = ⟨ x , ⟨ here refl , Px ⟩ ⟩
+  to (x ∷ xs) (there any-P-xs) = let ⟨ y , ⟨ y∈xs , Py ⟩ ⟩ = to xs any-P-xs
+                                 in ⟨ y , ⟨ (there y∈xs) , Py ⟩ ⟩
+
+  from : ∀ {A : Set} {P : A → Set} (xs : List A) → ∃[ x ] (x ∈ xs × P x) → Any P xs
+  from (x ∷ xs) (⟨ y , ⟨ (here refl) , Py ⟩ ⟩) = here Py
+  from (x ∷ xs) (⟨ y , ⟨ (there y∈xs) , Py ⟩ ⟩) = there (from xs (⟨ y , ⟨ y∈xs , Py ⟩ ⟩))
+  
+  from∘to : ∀ {A : Set} {P : A → Set} (xs : List A) → (y : (Any P xs)) → (from xs (to xs y)) ≡ y
+  from∘to (x ∷ xs) (here Px) = refl
+  from∘to (x ∷ xs) (there any-P-xs) =
+    begin
+      from (x ∷ xs) (to (x ∷ xs) (there any-P-xs))
+    ≡⟨ cong there (from∘to xs any-P-xs) ⟩
+      there any-P-xs
+    ∎
+
+  to∘from : ∀ {A : Set} {P : A → Set} (xs : List A) → (y : ∃[ x ] (x ∈ xs × P x)) → (to xs (from xs y)) ≡ y
+  to∘from (x ∷ xs) (⟨ y , ⟨ (here refl) , Py ⟩ ⟩) = refl
+  to∘from (x ∷ xs) (⟨ y , ⟨ (there y∈xs) , Py ⟩ ⟩) =
+    begin
+      to (x ∷ xs) (from (x ∷ xs) (⟨ y , ⟨ (there y∈xs) , Py ⟩ ⟩))
+    -- ≡⟨⟩
+    --  ⟨ to xs (from xs ⟨ y , ⟨ y∈xs , Py ⟩ ⟩) .proj₁ , ⟨ there (to xs (from xs ⟨ y , ⟨ y∈xs , Py ⟩ ⟩) .proj₂ .proj₁) , to xs (from xs ⟨ y , ⟨ y∈xs , Py ⟩ ⟩) .proj₂ .proj₂ ⟩ ⟩
+    ≡⟨ cong (λ t → (⟨ t .proj₁ , ⟨ there (t .proj₂ .proj₁) , t .proj₂ .proj₂ ⟩ ⟩)) (to∘from xs ⟨ y , ⟨ y∈xs , Py ⟩ ⟩) ⟩
+      ⟨ y , ⟨ there y∈xs , Py ⟩ ⟩
+    ∎ 
+
+{- 
+data Dec (A : Set) : Set where
+  yes :   A → Dec A
+  no  : ¬ A → Dec A
+ -}
+Decidable : ∀ {A : Set} → (A → Set) → Set
+Decidable {A} P  =  ∀ (x : A) → Dec (P x)
+
+all : ∀ {A : Set} → (A → Bool) → List A → Bool
+all p  =  foldr _∧_ true ∘ map p
+
+All? : ∀ {A : Set} {P : A → Set} → Decidable P → Decidable (All P)
+All? P? []                                 =  yes []
+All? P? (x ∷ xs) with P? x   | All? P? xs
+...                 | yes Px | yes Pxs     =  yes (Px ∷ Pxs)
+...                 | no ¬Px | _           =  no λ{ (Px ∷ Pxs) → ¬Px Px   }
+...                 | _      | no ¬Pxs     =  no λ{ (Px ∷ Pxs) → ¬Pxs Pxs }
+
+any : ∀ { A : Set} → (A → Bool) → List A → Bool
+any p = foldr _∨_ true ∘ map p
+
+Any? : ∀ {A : Set} {P : A → Set} → Decidable P → Decidable (Any P)
+Any? P? []                                 =  no (λ()) 
+Any? P? (x ∷ xs) with P? x   | Any? P? xs
+...                 | yes Px | _           =  yes (here Px)
+...                 | _      | yes Pxs     =  yes (there Pxs)
+...                 | no ¬Px | no ¬Pxs     =  no (λ {(here Px) → ¬Px Px;
+                                                     (there any-P-xs) → ¬Pxs any-P-xs})
+
+data merge {A : Set} : (xs ys zs : List A) → Set where
+
+  [] : merge [] [] []
+
+  left-∷ : ∀ {x xs ys zs} → merge xs ys zs → merge (x ∷ xs) ys (x ∷ zs)
+
+  right-∷ : ∀ {y xs ys zs} → merge xs ys zs → merge xs (y ∷ ys) (y ∷ zs)
+
+_ : merge [ 1 , 4 ] [ 2 , 3 ] [ 1 , 2 , 3 , 4 ]
+_ = left-∷ (right-∷ (right-∷ (left-∷ [])))
+
+split : ∀ {A : Set} {P : A → Set} (P? : Decidable P) (zs : List A) → ∃[ xs ] ∃[ ys ] (merge xs ys zs × All P xs × All (¬_ ∘ P) ys)
+split P? []                                                                 = ⟨ [] ,     ⟨ [] ,     ⟨ [] ,        ⟨ [] ,       [] ⟩ ⟩ ⟩ ⟩
+split P? (z ∷ zs) with P? z   | split P? zs
+...                  | yes Pz | ⟨ xs , ⟨ ys , ⟨ m , ⟨ Pxs , ¬Pys  ⟩  ⟩  ⟩ ⟩ = ⟨ z ∷ xs , ⟨ ys ,     ⟨ left-∷ m ,  ⟨ Pz ∷ Pxs , ¬Pys ⟩ ⟩ ⟩ ⟩
+...                  | no ¬Pz | ⟨ xs , ⟨ ys , ⟨ m , ⟨ Pxs , ¬Pys  ⟩  ⟩  ⟩ ⟩ = ⟨ xs ,     ⟨ z ∷ ys , ⟨ right-∷ m , ⟨ Pxs ,      ¬Pz ∷ ¬Pys ⟩ ⟩ ⟩ ⟩
